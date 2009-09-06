@@ -24,9 +24,24 @@ class RunnerExampleGroup < Spec::Example::ExampleGroup
       it_exits("without error (#{expected_status_code})", expected_status_code, options)
     end
 
-    def run(args = [])
+    def run(args = [], &block)
       args = args.is_a?(String) ? args.split(' ') : args
-      self.class.described_class.run(args, out_stream, error_stream)
+      
+      if block_given?
+        open('|-') do |command|
+          if command.nil?
+            runner.run(args)
+          else
+            yield command
+          end
+        end
+      else
+        cross_streams { runner.run(args) }
+      end
+    end
+    
+    def in_stream
+      @in_stream ||= StringIO.new
     end
 
     def out_stream
@@ -44,6 +59,30 @@ class RunnerExampleGroup < Spec::Example::ExampleGroup
     def error
       error_stream.string
     end
+    
+    def cross_streams(&block)
+      # Preserve original
+      stdin  = $stdin
+      stdout = $stdout
+      stderr = $stderr
+      
+      # Swap in our streams
+      $stdin  = in_stream
+      $stdout = out_stream
+      $stderr = error_stream
+      
+      # Bust some ghosts
+      yield
+      
+      # Swap 'em back
+      $stdin  = stdin
+      $stdout = stdout
+      $stderr = stderr
+    end
+    
+    def runner
+      self.class.described_class
+    end
 
     def when_run_with(args)
       yield
@@ -55,8 +94,8 @@ class RunnerExampleGroup < Spec::Example::ExampleGroup
       yield
     end
 
-    def running_with(args)
-      lambda { run(args) }
+    def running_with(args, &block)
+      lambda { run(args, &block) }
     end
 
 end
