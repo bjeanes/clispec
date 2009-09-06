@@ -3,17 +3,13 @@ class RunnerExampleGroup < Spec::Example::ExampleGroup
 
     def self.stub_exit!
       before(:each) do
-        p Spec::Runner.configuration.mock_framework.to_s
-        case Spec::Runner.configuration.mock_framework.to_s
-          when /rspec/ then Kernel.stub!(:exit)
-          when /mocha/ then Kernel.stubs(:exit)
-        end
+        Kernel.stubs(:exit)
       end
     end
 
     def self.it_exits(message, expected_status_code, options = [])
       it "exits #{message}" do
-        Kernel.should_receive(:exit).with(expected_status_code)
+        Kernel.expects(:exit).with(expected_status_code)
         run(options[:when_run_with] || '')
       end
     end
